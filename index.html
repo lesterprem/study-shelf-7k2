@@ -408,7 +408,7 @@ function keyHas(a, id) { return Object.keys(a).some(k => (k === id || k.startsWi
    used=false means the question is plain text and gets the normal answer box. */
 function qWidgets(e, a, ro) {
   /* answers typed into a plain box before the widgets existed stay readable */
-  if (!['mc', 'tfn', 'circle'].includes(e.kind) && a[e.id] !== undefined && !Object.keys(a).some(k => k.startsWith(e.id + '#'))) return { used: false, html: e.html };
+  if (ro && !['mc', 'tfn', 'circle'].includes(e.kind) && a[e.id] !== undefined && !Object.keys(a).some(k => k.startsWith(e.id + '#'))) return { used: false, html: e.html };
   const dis = ro ? ' disabled' : '';
   const val = k => a[e.id + '#' + k] || '';
   const rad = (k, v, label) => `<label class="opt"><input type="radio" name="${esc(e.id)}#${k}" data-a="${esc(e.id)}#${k}" value="${esc(v)}"${val(k) === v ? ' checked' : ''}${dis}> ${label}</label>`;
@@ -470,11 +470,13 @@ function vTest(id) {
     const mk = e.marks != null ? `<span class="mk">${e.marks} mark${e.marks === 1 ? '' : 's'}</span>` : '';
     const a = st.answers;
     const w = qWidgets(e, a, false);
+    const old = w.used && typeof a[e.id] === 'string' && a[e.id].trim() && !['mc', 'tfn', 'circle'].includes(e.kind)
+      ? `<div class="note">Your earlier typed answer: <span style="white-space:pre-wrap">${esc(a[e.id])}</span><br><span class="small-caps">Please answer again with the boxes above.</span></div>` : '';
     const field = w.used ? '' : e.maths
       ? `<div class="lbl">Working (write every step)</div><textarea class="work" data-a="${e.id}:w" rows="5">${esc(a[e.id + ':w'] || '')}</textarea>
          <div class="lbl">Final answer</div><textarea data-a="${e.id}:a" rows="2">${esc(a[e.id + ':a'] || '')}</textarea>`
       : `<textarea data-a="${e.id}" rows="${e.hint ? 3 : 2}" placeholder="${esc(e.hint || '')}">${esc(a[e.id] || '')}</textarea>`;
-    return `<div class="q"><div class="qh"><div class="num">${e.n ? esc(e.n) + '.' : ''}</div><div class="qb read">${w.html}</div>${mk}</div>${field}</div>`;
+    return `<div class="q"><div class="qh"><div class="num">${e.n ? esc(e.n) + '.' : ''}</div><div class="qb read">${w.html}</div>${mk}</div>${old}${field}</div>`;
   }).join('');
   const audio = t.audio ? audioPanel(t.audio, Math.max(0, (t.audio_plays || 2) - (st.plays || 0)) || -1, 'Listening · you can play it ' + (t.audio_plays || 2) + ' times') : '';
   return header(SUBJ[m.subject].name + ' · Test ' + m.n, null) +
