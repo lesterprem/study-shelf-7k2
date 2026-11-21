@@ -34,7 +34,8 @@ h3{font-size:1.1rem;margin:1.6em 0 .3em}
 .card{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:4px;padding:18px 20px;margin:0 0 12px;cursor:pointer;color:inherit;font:inherit}
 .card:hover{border-color:var(--ink)}
 .card .name{font-size:1.3rem;font-weight:700;line-height:1.3}
-.card .meta{color:var(--soft);font-size:.85rem;margin-top:2px}
+.card .meta{color:var(--soft);font-size:.85rem;margin-top:2px;line-height:1.5}
+.card .meta b,.sub b{color:var(--ink);font-weight:700;font-style:normal}
 .card .top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
 .pct{font:700 15px system-ui,sans-serif;white-space:nowrap}
 .bar{height:5px;background:var(--line);border-radius:3px;margin-top:12px;overflow:hidden}
@@ -214,6 +215,20 @@ const STAGE = {
 };
 const pctOf = id => STAGE[(S.mods[id] || {}).stage || 'new'].pct;
 const subjPct = s => Math.round(s.modules.reduce((a, m) => a + pctOf(m.id), 0) / s.modules.length);
+const stageOf = id => (S.mods[id] || {}).stage || 'new';
+function subjCounts(s) {
+  const c = { complete: 0, review: 0, marking: 0, progress: 0, fresh: 0 };
+  s.modules.forEach(m => { const st = stageOf(m.id);
+    if (st === 'complete') c.complete++; else if (st === 'marked') c.review++; else if (st === 'submitted') c.marking++;
+    else if (st === 'learning' || st === 'testing') c.progress++; else c.fresh++; });
+  return c;
+}
+function subjLine(s) {
+  const c = subjCounts(s);
+  const parts = [[c.complete, 'complete'], [c.review, 'to review'], [c.marking, 'awaiting marking'], [c.progress, 'in progress'], [c.fresh, 'not started']]
+    .filter(x => x[0]).map(x => `<b>${x[0]}</b> ${x[1]}`);
+  return `<b>${s.modules.length}</b> modules${parts.length ? ' · ' + parts.join(' · ') : ''}`;
+}
 const subjDone = s => s.modules.filter(m => (S.mods[m.id] || {}).stage === 'complete').length;
 
 const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -262,7 +277,7 @@ function vHome() {
     const p = subjPct(s);
     return `<button class="card" data-go='{"name":"subject","s":"${s.id}"}'>
       <div class="top"><div class="name">${esc(s.name)}</div><div class="pct">${p}%</div></div>
-      <div class="meta">${subjDone(s)} of ${s.modules.length} modules complete</div>
+      <div class="meta">${subjLine(s)}</div>
       <div class="bar"><i style="width:${p}%"></i></div></button>`;
   }).join('');
   const total = DATA.subjects.reduce((a, s) => a + s.modules.length, 0);
@@ -305,7 +320,7 @@ function vSubject(sid) {
   const extras = (s.extras || []).map((x, i) =>
     `<button class="card" data-go='{"name":"extra","s":"${sid}","i":${i}}'><div class="name">${esc(x.title)}</div><div class="meta">Read only · no test</div></button>`).join('');
   return header(s.name, { name: 'home' }) +
-    `<h1>${esc(s.name)}</h1><p class="sub">${subjDone(s)} of ${s.modules.length} modules complete · ${subjPct(s)}%</p>${list}${extras}`;
+    `<h1>${esc(s.name)}</h1><p class="sub">${subjLine(s)} · ${subjPct(s)}%</p>${list}${extras}`;
 }
 function vExtra(sid, i) {
   const x = SUBJ[sid].extras[i];
