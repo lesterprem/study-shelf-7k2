@@ -37,6 +37,7 @@ h3{font-size:1.1rem;margin:1.6em 0 .3em}
 .card .meta{color:var(--soft);font-size:.85rem;margin-top:2px;line-height:1.5}
 .card .meta b,.sub b{color:var(--ink);font-weight:700;font-style:normal}
 .card .top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.grade{font-weight:700;background:var(--ink);color:var(--paper);border-radius:3px;padding:2px 8px;font-size:.85em;white-space:nowrap}.grade.none{background:none;color:var(--soft);font-weight:400;padding:0}
 .pct{font:700 15px system-ui,sans-serif;white-space:nowrap}
 .bar{height:5px;background:var(--line);border-radius:3px;margin-top:12px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--ink)}
@@ -247,6 +248,15 @@ const STAGE = {
   complete:  { label: 'Complete',          pct: 100, cls: 'done' },
 };
 const pctOf = id => STAGE[(S.mods[id] || {}).stage || 'new'].pct;
+function subjGrade(s) {
+  let got = 0, max = 0, n = 0;
+  s.modules.forEach(m => {
+    const st = S.mods[m.id] || {};
+    if ((st.stage === 'marked' || st.stage === 'complete') && st.score != null && m.test.marks) { got += st.score; max += m.test.marks; n++; }
+  });
+  return max ? { n, pct: Math.round(100 * got / max), ten: Math.round(100 * got / max) / 10 } : null;
+}
+const gradeHtml = s => { const g = subjGrade(s); return g ? `<span class="grade" title="Marks scored in ${g.n} marked module${g.n === 1 ? '' : 's'}">Grade ${g.ten.toFixed(1)}/10 · ${g.pct}%</span>` : '<span class="grade none">Grade: no marked test yet</span>'; };
 const subjPct = s => Math.round(s.modules.reduce((a, m) => a + pctOf(m.id), 0) / s.modules.length);
 const stageOf = id => (S.mods[id] || {}).stage || 'new';
 function subjCounts(s) {
@@ -363,6 +373,7 @@ function vHome() {
     const p = subjPct(s);
     return `<button class="card" data-go='{"name":"subject","s":"${s.id}"}'>
       <div class="top"><div class="name">${esc(s.name)}</div><div class="pct">${p}%</div></div>
+      <div class="meta">${gradeHtml(s)} <span class="small">· ${p}% complete</span></div>
       <div class="meta">${examLine(s)}</div>
       ${prepLine(s) ? `<div class="meta">${prepLine(s)}</div>` : ''}
       <div class="meta">${subjLine(s)}</div>
@@ -384,6 +395,7 @@ function vHome() {
         <button class="btn small ghost" data-act="settings">Parent settings</button>
         <input type="file" id="imp" accept="application/json" hidden>
       </div>
+      <p><b>How the grade is worked out:</b> for each subject, add up the marks Ryan scored in all its marked tests and divide by the total marks those tests were worth. It is shown out of 10 and as a percentage. Bigger tests count for more, and modules not yet marked are left out. “Extra” tests count as well as the test they follow.</p>
       <p><span id="syncind"></span><br>Your answers and progress are saved in this browser${sync.cfg ? ' and synced online' : ''}.
       ${S.backup ? 'Last backup file: ' + esc(new Date(S.backup).toLocaleString()) + '.' : ''}</p>
     </div>`;
@@ -409,7 +421,7 @@ function vSubject(sid) {
   const extras = (s.extras || []).map((x, i) =>
     `<button class="card" data-go='{"name":"extra","s":"${sid}","i":${i}}'><div class="name">${esc(x.title)}</div><div class="meta">Read only · no test</div></button>`).join('');
   return header(s.name, { name: 'home' }) +
-    `<h1>${esc(s.name)}</h1><p class="sub">${subjLine(s)} · ${subjPct(s)}%</p>${list}${extras}`;
+    `<h1>${esc(s.name)}</h1><p class="sub">${subjLine(s)} · ${subjPct(s)}% complete · ${gradeHtml(s)}</p>${list}${extras}`;
 }
 function vExtra(sid, i) {
   const x = SUBJ[sid].extras[i];
